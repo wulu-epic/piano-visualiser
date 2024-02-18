@@ -1,5 +1,7 @@
-import random, pygame
+import random, pygame, time
+
 from modules.Shapes import *
+from modules.Midi import MidiParser
 
 class PianoVisualiser:
     def __init__(self):
@@ -11,6 +13,9 @@ class PianoVisualiser:
 
         self.WHITE_KEY_COLOUR = (255, 255, 255)
         self.BLACK_KEY_COLOUR = (0, 0, 0)
+        self.KEY_DOWN_COLOUR = (0, 255, 0)
+
+        self.MAX_CHORD_NOTES = 6 # No rach support sorry 🧌🧌🧌🧌
 
         self.NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         self.NOTES_IN_OCTAVE = len(self.NOTES)
@@ -21,6 +26,11 @@ class PianoVisualiser:
         self.keys = []
         self.notes_and_shapes = {}
 
+        self.visualisation_running = False
+        self.t = 0.0
+
+        self.timeline_speed = 0.1 # BPM LATER ON WOOO
+        
     def draw_keys(self):
         key_space = 0
 
@@ -53,6 +63,59 @@ class PianoVisualiser:
 
     def get_shape_by_key(self, key):
         return self.notes_and_shapes.get(key, None)
+    
+    def find_midi_duration(self, mid_parser : MidiParser):
+        if len(mid_parser.result) <= 0:
+            return 'Need to deserialise some midi first!'
+        
+        greatest_time = max(note.time for note in mid_parser.result)
+        return greatest_time
+    
+    def get_notes_by_t(self, mid_parser: MidiParser): 
+        if len(mid_parser.result) <= 0:
+            return []
+
+        notes = []
+        for note in mid_parser.result:
+            if note.time - 0.1 <= self.t and note.time + 0.1 >= self.t:
+                if len(notes) >= self.MAX_CHORD_NOTES:
+                    return notes
+                else:
+                    notes.append(note)
+
+        return notes
+    
+    def highlight_note(self, note):
+        shape : Shape = self.get_shape_by_key(note.note)
+
+        originalColour = shape.colour
+        shape.colour = self.KEY_DOWN_COLOUR
+
+        print(f'The note: {note.note} has a hold time of: {note.time}')
+
+        time.sleep(note.time/1000)
+        shape.colour = originalColour
+    
+    def play_midi_thread(self, pianoVisualiser):
+        pianoVisualiser.visualisation_running = True
+        midParser = MidiParser()
+        midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Ballade_No._1_Opus_23_in_G_Minor.mid")
+
+        max_time = self.find_midi_duration(midParser)
+        if not max_time:
+            print(f'Failed to play the selected midi file')
+
+        self.t = 0.0 # Will move acting as a timeline [have to reset it]
+        for ms in range(0, int(max_time * 10), int(self.timeline_speed * 10) ):
+            notes = self.get_notes_by_t(midParser)
+            if len(notes) > 0:
+                for note in notes:
+                    self.highlight_note(note)
+
+            print(ms)
+            self.t += self.timeline_speed
+        
+        print('Finished playing the midi file!')
 
 
 

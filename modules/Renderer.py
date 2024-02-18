@@ -1,4 +1,5 @@
 import pygame, math, threading
+from modules import Piano
 
 class Scene:
     def __init__(self, scene_name) -> None:
@@ -41,11 +42,20 @@ class Scene:
             self.handle_events()
             self.screen.fill((30,30,30))
 
-            for void, arg in (custom_functions):
-                thread = threading.Thread(target=void,  args=(arg,), daemon=True)
-                thread.start()
-                self.threads.append(thread)
-                    
+            for item in custom_functions:
+                if len(item) == 2:
+                    #Custom arguement functionality TODO will have to setup a more modular system for this later.
+                    void, arg = item
+                    if arg is not None and type(arg) is Piano.PianoVisualiser and not arg.visualisation_running:
+                        thread = threading.Thread(target=void, args=(arg,), daemon=True)
+                        thread.start()
+                        self.threads.append(thread)
+                else:
+                    void = item[0]
+                    thread = threading.Thread(target=void, daemon=True)
+                    thread.start()
+                    self.threads.append(thread)
+                        
             for object in self.scene_objects:
                 object.draw(self.screen)
 
