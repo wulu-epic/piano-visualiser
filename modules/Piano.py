@@ -1,7 +1,10 @@
 import random, pygame, time
 
 from modules.Shapes import *
+from modules.Notes import *
+
 from modules.Midi import MidiParser
+from modules import Output
 
 class PianoVisualiser:
     def __init__(self):
@@ -29,7 +32,8 @@ class PianoVisualiser:
         self.visualisation_running = False
         self.t = 0.0
 
-        self.timeline_speed = 0.1 # BPM LATER ON WOOO
+        self.timeline_speed = 0
+        self.time_scale = 1000
         
     def draw_keys(self):
         key_space = 0
@@ -91,30 +95,35 @@ class PianoVisualiser:
         originalColour = shape.colour
         shape.colour = self.KEY_DOWN_COLOUR
 
-        print(f'The note: {note.note} has a hold time of: {note.time}')
-
         time.sleep(note.time/1000)
         shape.colour = originalColour
     
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
         midParser = MidiParser()
-        midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Ballade_No._1_Opus_23_in_G_Minor.mid")
+        done = midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Ballade_No._1_Opus_23_in_G_Minor.mid")
 
-        max_time = self.find_midi_duration(midParser)
-        if not max_time:
-            print(f'Failed to play the selected midi file')
+        while not done:
+            time.sleep(0.1)
 
-        self.t = 0.0 # Will move acting as a timeline [have to reset it]
-        for ms in range(0, int(max_time * 10), int(self.timeline_speed * 10) ):
-            notes = self.get_notes_by_t(midParser)
-            if len(notes) > 0:
-                for note in notes:
+        max_index_size = len(done) - 1
+        print(f'size: {max_index_size}')
+        self.timeline_speed = 0
+
+        while self.timeline_speed <= max_index_size:
+            print(self.timeline_speed)
+            element = midParser.result[self.timeline_speed]
+
+            if type(element) is Note:
+                self.highlight_note(element)
+            elif type(element) is Chord:
+                print(element)
+                for note in element.notes:
                     self.highlight_note(note)
 
-            print(ms)
-            self.t += self.timeline_speed
-        
+            self.timeline_speed += 1
+            time.sleep(0.1)
+
         print('Finished playing the midi file!')
 
 

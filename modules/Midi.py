@@ -1,6 +1,8 @@
 import os, mido
 from mido import MidiFile
+
 from modules.Notes import *
+from modules.Output import *
 
 class MidiParser:
     def __init__(self) -> None:
@@ -20,20 +22,34 @@ class MidiParser:
         return key_name
     
     def deserialize_midi(self, midi_file):
-        print(f"Deserializing: {midi_file}, please wait.")
+        warn(f"Deserializing: {midi_file}, please wait.")
 
         if ".mid" not in midi_file:
-            print(f'The requested file: {midi_file} is not a MIDI file.')
-            return
+            error(f'The requested file: {midi_file} is not a MIDI file.')
+            return []
 
         mid = mido.MidiFile(midi_file, clip=True)
+        self.result = []
+        current_chord_notes = []
+
         for track in mid.tracks:
             for event in track:
-                if type(event) is mido.Message and event.type == "note_on":
-                    self.result.append(Note(event.time, event.velocity, self.midi_note_number_to_name(event.note)))
+                if type(event) is mido.Message:
+                    if event.type == "note_on" and event.velocity != 0:
+                        key = self.midi_note_number_to_name(event.note)
+                        current_chord_notes.append(Note(event.time, event.velocity, key))
 
-        print(f"Successfully deserialized: {midi_file} with {len(self.result)} notes!")
+                    elif event.type == "note_off" or (event.type == "note_on" and event.velocity == 0):
+                        key = self.midi_note_number_to_name(event.note)
+
+                        current_chord_notes.append(Note(event.time, event.velocity, key))
+                        self.result.append(Chord(current_chord_notes, event.time))
+
+                        current_chord_notes = []
+
+        output(f"Successfully deserialized: {midi_file} with {len(self.result)} notes and chords!")
         return self.result
+
 
 class MidiPlayer:
     def __init__(self) -> None:
