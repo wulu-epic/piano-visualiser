@@ -8,8 +8,7 @@ from pygame import midi
 
 class MidiParser:
     def __init__(self) -> None:
-            self.result = []
-            pass
+        self.result = []
     
     def midi_note_number_to_name(self, note_number):
         notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -31,16 +30,19 @@ class MidiParser:
             return {}
 
         mid = mido.MidiFile(midi_file, clip=True)
+        track_counter = 0
         self.result = {}
-        
+
         for track in mid.tracks:
-            self.result[track.name] = []
+            self.result[track.name + str(track_counter)] = [] # needed to make a unique identifier, incase they didnt name the channel name 
             track : mido.MidiTrack = track
+
             for event in track:
                 if type(event) is mido.Message:
                     if event.type == "note_on":
-                        self.result[track.name].append(Note(event.time, event.velocity, self.midi_note_number_to_name(event.note)))
-        output(f"Successfully deserialized: {midi_file} with {len(self.result)} notes")
+                        self.result[track.name + str(track_counter)].append(Note(event.time, event.velocity, self.midi_note_number_to_name(event.note)))
+            track_counter += 1
+        output(f"Successfully deserialized: {midi_file} with {len(self.result)} channels")
         return self.result, mid.tracks
 
 class MIDIListener:
@@ -81,7 +83,6 @@ class MIDIListener:
         while self.running:
             if self.input_midi_device.poll():
                 midi_events = self.input_midi_device.read(25)
-                print(midi_events)
                 yield midi_events
 
 class MidiPlayer:
