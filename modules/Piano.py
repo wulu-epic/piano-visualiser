@@ -11,7 +11,6 @@ from modules.Notes import *
 from modules.Midi import MidiParser
 from modules import Output
 
-
 class PianoVisualiser:
     def __init__(self):
         self.screen_width = 1280
@@ -82,41 +81,54 @@ class PianoVisualiser:
         return greatest_time
     
     def highlight_note(self, notes):
+        if not notes:
+            return
+
         for note in notes:
             shape = self.get_shape_by_key(note.note)
             shape.colour = self.KEY_DOWN_COLOUR
-        
+            
         start_time = pygame.time.get_ticks()
-
-        # Determine the maximum duration among the notes in the chord
-        max_duration = max(note.time for note in notes)
+        max_duration = max(note.time for note in notes) if notes else 0
 
         while pygame.time.get_ticks() - start_time < max_duration:
             pygame.time.wait(10)
 
-        # Reset the color for all notes in the chord
         for note in notes:
             shape = self.get_shape_by_key(note.note)
             shape.colour = shape.original_colour
 
     def play_track(self, channel):
         start_time = time.time()
-        for notes in channel:
+
+        active_notes = {}
+
+        for note in channel:
             elapsed_time = time.time() - start_time
-            wait_time = max(note.time / self.time_scale for note in notes) - elapsed_time
+            wait_time = note.time / self.time_scale - elapsed_time
+
             if wait_time > 0:
-                time.sleep(wait_time)
-            
-            self.highlight_note(notes)
+                pygame.time.wait(int(wait_time * 1000))  
+
+            if note.velocity > 0:
+                active_notes[note.note] = note
+            else:
+                active_notes.pop(note.note, None)
+
+            print("Active notes:", active_notes)
+            self.highlight_note(list(active_notes.values()))
+
+        self.highlight_note([])
 
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-
+        
         midParser = MidiParser()
         result, _ = midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Ballade_No._1_Opus_23_in_G_Minor.mid")
 
         thread_list = []
-        for track_name, notes in result.items():
+        
+        for track_name, _ in result.items():
             thread = Thread(target=self.play_track, args=(result[track_name], ))
             thread_list.append(thread)
             thread.start()

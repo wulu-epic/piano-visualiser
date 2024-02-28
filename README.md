@@ -1,6 +1,6 @@
 # Piano Visualiser
 
-Piano Visualiser is a Python application designed as an alternative to Synthesia, offering various features for MIDI file visualization, real-time keyboard input interpretation, and MIDI recording and playback.
+Piano Visualiser is a Python application designed as an alternative to Synthesia, offering various features for MIDI file visualization, real-time keyboard input interpretation, and MIDI recording and playback. This is a W.I.P so not everything works as intended as of yet
 
 ## Features
 
@@ -16,7 +16,7 @@ Piano Visualiser is a Python application designed as an alternative to Synthesia
 
 - Python 3.x
 - pygame
-- numpy
+- mido
 
 ### Installation Steps
 
