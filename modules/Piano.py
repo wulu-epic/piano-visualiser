@@ -1,10 +1,16 @@
 import random, pygame, time
 
+from threading import Thread
+from queue import Queue
+
+import threading
+
 from modules.Shapes import *
 from modules.Notes import *
 
 from modules.Midi import MidiParser
 from modules import Output
+
 
 class PianoVisualiser:
     def __init__(self):
@@ -17,8 +23,6 @@ class PianoVisualiser:
         self.WHITE_KEY_COLOUR = (255, 255, 255)
         self.BLACK_KEY_COLOUR = (0, 0, 0)
         self.KEY_DOWN_COLOUR = (0, 255, 0)
-
-        self.MAX_CHORD_NOTES = 6 # No rach support sorry 🧌🧌🧌🧌
 
         self.NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         self.NOTES_IN_OCTAVE = len(self.NOTES)
@@ -34,6 +38,9 @@ class PianoVisualiser:
 
         self.timeline_speed = 0
         self.time_scale = 1000
+        self.playing_notes = {}
+
+        self.lock = threading.Lock()
         
     def draw_keys(self):
         key_space = 0
@@ -64,7 +71,6 @@ class PianoVisualiser:
 
             self.notes_and_shapes[key_name] = key
 
-
     def get_shape_by_key(self, key):
         return self.notes_and_shapes.get(key, None)
     
@@ -75,56 +81,26 @@ class PianoVisualiser:
         greatest_time = max(note.time for note in mid_parser.result)
         return greatest_time
     
-    def get_notes_by_t(self, mid_parser: MidiParser): 
-        if len(mid_parser.result) <= 0:
-            return []
-
-        notes = []
-        for note in mid_parser.result:
-            if note.time - 0.1 <= self.t and note.time + 0.1 >= self.t:
-                if len(notes) >= self.MAX_CHORD_NOTES:
-                    return notes
-                else:
-                    notes.append(note)
-
-        return notes
-    
     def highlight_note(self, note):
-        shape : Shape = self.get_shape_by_key(note.note)
-
-        originalColour = shape.colour
+        shape = self.get_shape_by_key(note.note)
         shape.colour = self.KEY_DOWN_COLOUR
+        start_time = time.time() 
 
-        time.sleep(note.time/1000)
-        shape.colour = originalColour
-    
+        while time.time() - start_time < note.time / 1000: 
+            time.sleep(0.001) 
+
+        shape.colour = shape.original_colour
+
+    def play_track(self, channel):
+        for note in channel:
+            Thread(target=self.highlight_note, args=(note, ), daemon=True).start()
+
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
         midParser = MidiParser()
-        done = midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Ballade_No._1_Opus_23_in_G_Minor.mid")
+        result, tracks = midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Ballade_No._1_Opus_23_in_G_Minor.mid")
 
-        while not done:
-            time.sleep(0.1)
-
-        max_index_size = len(done) - 1
-        print(f'size: {max_index_size}')
-        self.timeline_speed = 0
-
-        while self.timeline_speed <= max_index_size:
-            print(self.timeline_speed)
-            element = midParser.result[self.timeline_speed]
-
-            if type(element) is Note:
-                self.highlight_note(element)
-            elif type(element) is Chord:
-                print(element)
-                for note in element.notes:
-                    self.highlight_note(note)
-
-            self.timeline_speed += 1
-            time.sleep(0.1)
+        for track in tracks:
+            Thread(target=self.play_track, args=(result[track.name], ), daemon=True).start()
 
         print('Finished playing the midi file!')
-
-
-
