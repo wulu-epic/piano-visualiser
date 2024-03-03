@@ -7,7 +7,6 @@ from modules.Piano import PianoVisualiser
 from modules.Midi import MidiParser
 
 from modules.Shapes import *
-from modules.Notes import *
 from modules.Output import *
 
 def main():

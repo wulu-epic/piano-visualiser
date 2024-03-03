@@ -2,11 +2,13 @@ import random, pygame, time
 
 from threading import Thread
 from queue import Queue
+from collections import defaultdict
 
-import threading
+import threading, numpy
 
 from modules.Shapes import *
-from modules.Notes import *
+from modules.PianoObjects import *
+from modules.Output import*
 
 from modules.Midi import MidiParser
 from modules import Output
@@ -33,14 +35,7 @@ class PianoVisualiser:
         self.notes_and_shapes = {}
 
         self.visualisation_running = False
-        self.t = 0.0
-
-        self.timeline_speed = 0
-        self.time_scale = 1000
-        self.playing_notes = {}
-
-        self.lock = threading.Lock()
-        
+          
     def draw_keys(self):
         key_space = 0
 
@@ -73,67 +68,57 @@ class PianoVisualiser:
     def get_shape_by_key(self, key):
         return self.notes_and_shapes.get(key, None)
     
-    def find_midi_duration(self, mid_parser : MidiParser):
-        if len(mid_parser.result) <= 0:
-            return 'Need to deserialise some midi first!'
-        
-        greatest_time = max(note.time for note in mid_parser.result)
-        return greatest_time
-    
-    def highlight_note(self, notes):
-        if not notes:
+    def highlight_note(self, note_object : N_Note, midParser : MidiParser):
+        key_note = midParser.midi_note_number_to_name(note_object.pitch)
+        shape : Shape = self.get_shape_by_key(key_note)
+        if not shape:
+            error(f'Failed to get the shape for {note_object.pitch}')
             return
+        
+        shape.colour = self.KEY_DOWN_COLOUR
 
-        for note in notes:
-            shape = self.get_shape_by_key(note.note)
-            shape.colour = self.KEY_DOWN_COLOUR
-            
-        start_time = pygame.time.get_ticks()
-        max_duration = max(note.time for note in notes) if notes else 0
+    def unhighlight_note(self, note_object : N_Note, midParser : MidiParser):
+        key_note = midParser.midi_note_number_to_name(note_object.pitch)
+        shape : Shape = self.get_shape_by_key(key_note)
+        if not shape:
+            error(f'Failed to get the shape for {note_object.pitch}')
+            return
+        
+        shape.colour = shape.original_colour
 
-        while pygame.time.get_ticks() - start_time < max_duration:
-            pygame.time.wait(10)
+    def press_note_array(self, note_array : list, length : float, midParser : MidiParser) -> None:
+        for note in note_array:
+            self.highlight_note(note, midParser)
+        
+        time.sleep(length / 2)
 
-        for note in notes:
-            shape = self.get_shape_by_key(note.note)
-            shape.colour = shape.original_colour
+        for note in note_array:
+            self.unhighlight_note(note, midParser)
+    
+    def play_midi(self, midParser: MidiParser, mid_parser_result: dict):
+        midi_length = midParser.get_midi_length(mid_parser_result)
+        result_clone = mid_parser_result.copy() 
 
-    def play_track(self, channel):
-        start_time = time.time()
+        notes_by_timestamp = defaultdict(list)
+        for timestamp, note_array in result_clone.items():
+            for note in note_array:
+                notes_by_timestamp[timestamp].append(note)
 
-        active_notes = {}
+        time_step = 1
+        timestamps = (notes_by_timestamp.keys())
 
-        for note in channel:
-            elapsed_time = time.time() - start_time
-            wait_time = note.time / self.time_scale - elapsed_time
-
-            if wait_time > 0:
-                pygame.time.wait(int(wait_time * 1000))  
-
-            if note.velocity > 0:
-                active_notes[note.note] = note
-            else:
-                active_notes.pop(note.note, None)
-
-            print("Active notes:", active_notes)
-            self.highlight_note(list(active_notes.values()))
-
-        self.highlight_note([])
-
+        for i in numpy.arange(0, midi_length, time_step):
+            for timestamp in timestamps:
+                if abs(i - timestamp) < time_step:
+                    note_array = notes_by_timestamp[timestamp]
+                    longest_note = midParser.note_array_largest(note_array)
+                    self.press_note_array(note_array, longest_note, midParser)
+                    
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
         
         midParser = MidiParser()
-        result, _ = midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Ballade_No._1_Opus_23_in_G_Minor.mid")
+        result = midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Fur Elise.mid")
 
-        thread_list = []
-        
-        for track_name, _ in result.items():
-            thread = Thread(target=self.play_track, args=(result[track_name], ))
-            thread_list.append(thread)
-            thread.start()
-
-        for thread in thread_list:
-            thread.join()
-
+        self.play_midi(midParser, result)
         print('Finished playing the midi file!')

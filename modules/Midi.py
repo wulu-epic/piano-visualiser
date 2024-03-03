@@ -1,16 +1,17 @@
-import os, mido
+import os, mido, pretty_midi
 from mido import MidiFile
 
-from modules.Notes import *
+from modules.PianoObjects import *
 from modules.Output import *
+from pretty_midi import *
 
 from pygame import midi
 
 class MidiParser:
     def __init__(self) -> None:
-        self.result = []
+        self.result = {}
     
-    def midi_note_number_to_name(self, note_number):
+    def midi_note_number_to_name(self, note_number) -> str:
         notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         octave = (note_number // 12) - 2
         note_index = note_number % 12
@@ -22,29 +23,38 @@ class MidiParser:
             key_name = f"{note}{octave}"
         return key_name
     
-    def deserialize_midi(self, midi_file):
+    def get_midi_length(self, result: dict) -> int: 
+        if not result:
+            error('Couldn\'t get the MIDI length due to the file not being deserialized.')
+            return -1
+        
+        return max(result.keys())
+    
+    def note_array_largest(self, note_array):
+        return max(note.end for note in note_array)
+    
+    def deserialize_midi(self, midi_file) -> dict:
         warn(f"Deserializing: {midi_file}, please wait.")
 
         if ".mid" not in midi_file:
             error(f'The requested file: {midi_file} is not a MIDI file.')
             return {}
-
-        mid = mido.MidiFile(midi_file, clip=True)
-        track_counter = 0
+        
         self.result = {}
 
-        for track in mid.tracks:
-            self.result[track.name + str(track_counter)] = [] # needed to make a unique identifier, incase they didnt name the channel name 
-            track : mido.MidiTrack = track
+        f_midi_file = PrettyMIDI(midi_file)
+        instrument_index : int = 0
 
-            for event in track:
-                if type(event) is mido.Message:
-                    if event.type == "note_on":
-                        self.result[track.name + str(track_counter)].append(Note(event.time, event.velocity, self.midi_note_number_to_name(event.note)))
-            track_counter += 1
-        output(f"Successfully deserialized: {midi_file} with {len(self.result)} channels")
-        return self.result, mid.tracks
+        for instrument in f_midi_file.instruments:
+            for note in instrument.notes:
+                n_note = N_Note(note.start, note.end, note.pitch, note.velocity, instrument_index) 
+                if n_note.start not in self.result:
+                    self.result[n_note.start] = []    
 
+                self.result[n_note.start].append(n_note)
+
+        return self.result
+    
 class MIDIListener:
     def __init__(self):
         self.running = True
@@ -84,10 +94,6 @@ class MIDIListener:
             if self.input_midi_device.poll():
                 midi_events = self.input_midi_device.read(25)
                 yield midi_events
-
-class MidiPlayer:
-    def __init__(self) -> None:
-        pass
       
 class MidiSerializer:
     def __init__(self) -> None:
