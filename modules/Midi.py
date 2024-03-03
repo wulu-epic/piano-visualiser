@@ -4,6 +4,7 @@ from mido import MidiFile
 from modules.PianoObjects import *
 from modules.Output import *
 from pretty_midi import *
+from pretty_midi import pretty_midi
 
 from pygame import midi
 
@@ -30,8 +31,10 @@ class MidiParser:
         
         return max(result.keys())
     
-    def note_array_largest(self, note_array):
-        return max(note.end for note in note_array)
+    def get_note_range(self, note_array): #get the smallest and lowest note start time
+        if len(note_array) <= 0:
+            return 0, 0
+        return max(note.end for note in note_array), min(note.start for note in note_array)
     
     def deserialize_midi(self, midi_file) -> dict:
         warn(f"Deserializing: {midi_file}, please wait.")
@@ -44,13 +47,11 @@ class MidiParser:
 
         f_midi_file = PrettyMIDI(midi_file)
         instrument_index : int = 0
-
         for instrument in f_midi_file.instruments:
             for note in instrument.notes:
                 n_note = N_Note(note.start, note.end, note.pitch, note.velocity, instrument_index) 
                 if n_note.start not in self.result:
                     self.result[n_note.start] = []    
-
                 self.result[n_note.start].append(n_note)
 
         return self.result

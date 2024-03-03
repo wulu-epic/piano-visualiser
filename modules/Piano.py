@@ -28,6 +28,8 @@ class PianoVisualiser:
         self.NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         self.NOTES_IN_OCTAVE = len(self.NOTES)
 
+        self.TIME_SCALE = 1
+
         self.white_key_width = self.screen_width / self.TOTAL_WHITE_KEYS
         self.white_key_height = (self.screen_height / 7) + 500
 
@@ -86,39 +88,48 @@ class PianoVisualiser:
         
         shape.colour = shape.original_colour
 
-    def press_note_array(self, note_array : list, length : float, midParser : MidiParser) -> None:
+    def press_note_array(self, note_array : list, end_duration : float, start_duration : float, midParser : MidiParser) -> None:
+        if end_duration == None:
+            end_duration = 0.0
+
         for note in note_array:
             self.highlight_note(note, midParser)
         
-        time.sleep(length / 2)
+        scaled_length = (end_duration - start_duration) * self.TIME_SCALE
+        time.sleep(scaled_length)
 
         for note in note_array:
             self.unhighlight_note(note, midParser)
     
     def play_midi(self, midParser: MidiParser, mid_parser_result: dict):
         midi_length = midParser.get_midi_length(mid_parser_result)
-        result_clone = mid_parser_result.copy() 
+        result_clone = mid_parser_result.copy() # create a copy just incase they wanna replay it or some shit
 
         notes_by_timestamp = defaultdict(list)
         for timestamp, note_array in result_clone.items():
             for note in note_array:
                 notes_by_timestamp[timestamp].append(note)
 
-        time_step = 1
-        timestamps = (notes_by_timestamp.keys())
+        time_step = .1
 
         for i in numpy.arange(0, midi_length, time_step):
-            for timestamp in timestamps:
+            notes_to_play = [] 
+            for timestamp in list(notes_by_timestamp.keys()):
                 if abs(i - timestamp) < time_step:
-                    note_array = notes_by_timestamp[timestamp]
-                    longest_note = midParser.note_array_largest(note_array)
-                    self.press_note_array(note_array, longest_note, midParser)
-                    
+                    notes_to_play.extend(notes_by_timestamp[timestamp])
+                    del notes_by_timestamp[timestamp] 
+
+            longest_note, smallest_note = midParser.get_note_range(notes_to_play)
+            self.press_note_array(notes_to_play, longest_note, smallest_note, midParser)
+
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-        
-        midParser = MidiParser()
-        result = midParser.deserialize_midi("C:/Users/Martin/Documents/MIDI Files/Fur Elise.mid")
+        piece = 'C:/Users/Martin/Documents/MIDI Files/Winter Wind Op. 25 No. 11.mid'
 
+        midParser = MidiParser()
+        result = midParser.deserialize_midi(piece)
+
+        output(f'Now playing the selected file: {piece}')
         self.play_midi(midParser, result)
-        print('Finished playing the midi file!')
+
+        output('Finished playing the midi file!')
