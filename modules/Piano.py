@@ -167,7 +167,7 @@ class PianoVisualiser:
 
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-        piece = 'C:/Users/Martin/Documents/MIDI Files/Winter Wind Op. 25 No. 11.mid'
+        piece = 'C:/Users/Martin/Documents/MIDI Files/rachmaninov_concerto_2_1_(c)galimberti (1).mid'
 
         midParser = MidiParser()
         result = midParser.deserialize_midi(piece)

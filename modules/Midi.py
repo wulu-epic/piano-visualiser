@@ -60,6 +60,7 @@ class MidiParser:
             
             instrument_index += 1
 
+        warn('Found ' + str(instrument_index) + ' instruments!')
         return self.result
     
 class MIDIListener:

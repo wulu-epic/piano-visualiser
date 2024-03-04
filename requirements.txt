@@ -1,0 +1,4 @@
+pygame
+mido
+pretty_midi
+python-rtmidi
