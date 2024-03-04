@@ -28,7 +28,7 @@ class PianoVisualiser:
         self.NOTES_IN_OCTAVE = len(self.NOTES)
 
         self.TIME_SCALE = 1
-        self.TIME_STEP = 0.1 # -> This requires a lot of tweaking unfortunately, need to figure our another method or make it dynamic.
+        self.TIME_STEP = 0.005 # -> This requires a lot of tweaking unfortunately, need to figure our another method or make it dynamic.
 
         self.white_key_width = self.screen_width / self.TOTAL_WHITE_KEYS
         self.white_key_height = (self.screen_height / 7) + 500
@@ -85,7 +85,7 @@ class PianoVisualiser:
         
         shape.colour = self.KEY_DOWN_COLOUR
 
-    def lift_note(self, note_object : N_Note, midParser : MidiParser):
+    def lift_note(self, note_object : N_Note, midParser : MidiParser) -> None:
         key_note = midParser.midi_note_number_to_name(note_object.pitch)
         self.midi_synthesier.stop_note(note_object.pitch, note_object.velocity)
 
@@ -96,18 +96,36 @@ class PianoVisualiser:
         
         shape.colour = shape.original_colour
 
-    def press_note_array(self, note_array : list, end_duration : float, start_duration : float, midParser : MidiParser) -> None:
-        if end_duration == 0:
-            return
+    def split_note_array_by_instruments(self, note_array: list[N_Note]) -> dict: # Creates a dictionary of notes sorted by instruments / tracks
+        result = {}
+        for note in note_array:
+            if note.instrument_index not in result:
+                result[note.instrument_index] = []
+            
+            result[note.instrument_index].append(note)
 
+        return result
+    
+    def press_note_array(self, note_array : list, end_duration : float, start_duration : float, midParser : MidiParser) -> None:
         for note in note_array:
             self.press_note(note, midParser)
         
-        scaled_length = ((end_duration - start_duration) * self.TIME_SCALE / len(note_array))
+        scaled_length = ((end_duration - start_duration) * self.TIME_SCALE )
         time.sleep(scaled_length) 
 
         for note in note_array:
-            self.lift_note(note, midParser)
+            self.lift_note(note, midParser) 
+    
+    def do_note_array(self, note_array : list, end_duration : float, start_duration : float, midParser : MidiParser) -> None:
+        if end_duration == 0:
+            return
+        
+        if len(note_array) != 1:
+            note_array_by_instruments : dict = self.split_note_array_by_instruments(note_array)
+            for instrument_index, note_arrays in note_array_by_instruments.items():
+                Thread(target=self.press_note_array, args=(note_arrays, end_duration, start_duration, midParser, ), daemon=True).start()
+        else:
+            Thread(target=self.press_note_array, args=(note_array, end_duration, start_duration, midParser, ), daemon=True).start()
     
     def play_midi(self, midParser: MidiParser, mid_parser_result: dict):
         if not self.midi_synthesier.open_port():
@@ -136,7 +154,7 @@ class PianoVisualiser:
                     del notes_by_timestamp[timestamp]
 
             longest_note, smallest_note = midParser.get_note_range(notes_to_play)
-            self.press_note_array(notes_to_play, longest_note, smallest_note, midParser)
+            self.do_note_array(notes_to_play, longest_note, smallest_note, midParser)
 
             elapsed_time = time.time() - start_time
             beat_time = (i * self.TIME_SCALE)
@@ -149,7 +167,7 @@ class PianoVisualiser:
 
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-        piece = 'C:/Users/Martin/Documents/MIDI Files/Moment Musicaux No. 4 in E Minor Rachmaninoff.mid'
+        piece = 'C:/Users/Martin/Documents/MIDI Files/Etude_Opus_25_No._5_in_E_Minor.mid'
 
         midParser = MidiParser()
         result = midParser.deserialize_midi(piece)

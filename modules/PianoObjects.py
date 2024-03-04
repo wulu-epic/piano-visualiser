@@ -5,6 +5,6 @@ class N_Note:
         self.pitch : float = pitch
 
         self.velocity : int = velocity
-        self.parent_track : int = parent_track
+        self.instrument_index : int = parent_track
 
 # Will move this class to Piano.py later on, cannot be fucked right now
