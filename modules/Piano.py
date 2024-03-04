@@ -28,7 +28,7 @@ class PianoVisualiser:
         self.NOTES_IN_OCTAVE = len(self.NOTES)
 
         self.TIME_SCALE = 1
-        self.TIME_STEP = 0.01
+        self.TIME_STEP = 0.1 # -> This requires a lot of tweaking unfortunately, need to figure our another method or make it dynamic.
 
         self.white_key_width = self.screen_width / self.TOTAL_WHITE_KEYS
         self.white_key_height = (self.screen_height / 7) + 500
@@ -38,6 +38,9 @@ class PianoVisualiser:
 
         self.midi_synthesier = MidiSynthesiser()
         self.visualisation_running = False
+
+        pygame.init()
+        self.clock = pygame.time.Clock()
           
     def draw_keys(self):
         key_space = 0
@@ -74,6 +77,7 @@ class PianoVisualiser:
     def press_note(self, note_object : N_Note, midParser : MidiParser):
         self.midi_synthesier.play_note(note_object.pitch, note_object.velocity)
         key_note = midParser.midi_note_number_to_name(note_object.pitch)
+
         shape : Shape = self.get_shape_by_key(key_note)
         if not shape:
             error(f'Failed to get the shape for {note_object.pitch}')
@@ -93,51 +97,68 @@ class PianoVisualiser:
         shape.colour = shape.original_colour
 
     def press_note_array(self, note_array : list, end_duration : float, start_duration : float, midParser : MidiParser) -> None:
-        if end_duration == None:
-            end_duration = 0.0
+        if end_duration == 0:
+            return
 
         for note in note_array:
             self.press_note(note, midParser)
         
-        scaled_length = (end_duration - start_duration) * self.TIME_SCALE
-        time.sleep(scaled_length)
+        scaled_length = ((end_duration - start_duration) * self.TIME_SCALE / len(note_array))
+        time.sleep(scaled_length) 
 
         for note in note_array:
             self.lift_note(note, midParser)
     
     def play_midi(self, midParser: MidiParser, mid_parser_result: dict):
-        midi_length = midParser.get_midi_length(mid_parser_result)
-        warn(f'This piece is: ~{midi_length // 60} minutes long.')
-        result_clone = mid_parser_result.copy() # create a copy just incase they wanna replay it or some shit
-
         if not self.midi_synthesier.open_port():
-            error('Failed to open a port!')
+            error('Failed to open a port! Audio will not work!')
+            return
         else:
             output('Opened a midi output port successfully!')
-        
+
+        midi_length = midParser.get_midi_length(mid_parser_result)
+        warn(f'This piece is: ~{midi_length // 60} minutes long.')
+
+        result_clone = mid_parser_result.copy()
+
         notes_by_timestamp = defaultdict(list)
         for timestamp, note_array in result_clone.items():
             for note in note_array:
                 notes_by_timestamp[timestamp].append(note)
 
+        start_time = time.time()
+
         for i in numpy.arange(0, midi_length, self.TIME_STEP):
-            notes_to_play = [] 
+            notes_to_play = []
             for timestamp in list(notes_by_timestamp.keys()):
-                if abs(i - timestamp) < self.TIME_STEP:
-                    notes_to_play.extend(notes_by_timestamp[timestamp])
-                    del notes_by_timestamp[timestamp] 
+                if (timestamp - i) < self.TIME_STEP:
+                    notes_to_play = (notes_by_timestamp[timestamp])
+                    del notes_by_timestamp[timestamp]
 
             longest_note, smallest_note = midParser.get_note_range(notes_to_play)
             self.press_note_array(notes_to_play, longest_note, smallest_note, midParser)
 
+            elapsed_time = time.time() - start_time
+            beat_time = (i * self.TIME_SCALE)
+            time_to_wait = beat_time - elapsed_time
+
+            if time_to_wait > 0:
+                pygame.time.wait(int(time_to_wait * 1000))  
+
+            self.clock.tick()
+
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-        piece = 'C:/Users/Martin/Documents/MIDI Files/Winter Wind Op. 25 No. 11.mid'
+        piece = 'C:/Users/Martin/Documents/MIDI Files/Moment Musicaux No. 4 in E Minor Rachmaninoff.mid'
 
         midParser = MidiParser()
         result = midParser.deserialize_midi(piece)
 
         output(f'Now playing the selected file: {piece}')
         self.play_midi(midParser, result)
-
         output('Finished playing the midi file!')
+
+
+class PianoAnimations(PianoVisualiser):
+    def note_fall(self) -> None:
+        pass

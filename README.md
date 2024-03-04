@@ -18,6 +18,7 @@ Piano Visualiser is a Python application designed as an alternative to Synthesia
 - pygame
 - mido
 - prettymidi
+- python-rtmidi
 
 ### Installation Steps
 

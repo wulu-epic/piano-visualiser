@@ -57,6 +57,8 @@ class MidiParser:
                 if n_note.start not in self.result:
                     self.result[n_note.start] = []    
                 self.result[n_note.start].append(n_note)
+            
+            instrument_index += 1
 
         return self.result
     
