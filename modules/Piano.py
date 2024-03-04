@@ -110,7 +110,7 @@ class PianoVisualiser:
         for note in note_array:
             self.press_note(note, midParser)
         
-        scaled_length = ((end_duration - start_duration) * self.TIME_SCALE )
+        scaled_length = ((end_duration - start_duration) * self.TIME_SCALE / len(note_array))
         time.sleep(scaled_length) 
 
         for note in note_array:
@@ -167,7 +167,7 @@ class PianoVisualiser:
 
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-        piece = 'C:/Users/Martin/Documents/MIDI Files/Etude_Opus_25_No._5_in_E_Minor.mid'
+        piece = 'C:/Users/Martin/Documents/MIDI Files/Winter Wind Op. 25 No. 11.mid'
 
         midParser = MidiParser()
         result = midParser.deserialize_midi(piece)
