@@ -6,7 +6,7 @@ Piano Visualiser is a Python application designed as an alternative to Synthesia
 
 - **Visualise MIDI Files:** Piano Visualiser allows you to visualize MIDI files, displaying the notes in real-time as they are played.
   
-- **Real-time Keyboard Input:** It enables you to play notes from your keyboard and visualizes those notes in real-time on the screen.
+- **Real-time Keyboard Input:** It enables you to play notes from your MIDI keyboard and visualizes those notes in real-time on the screen.
 
 - **Record & Playback MIDI:** Piano Visualiser supports MIDI recording, allowing you to record your performances and play them back later.
 

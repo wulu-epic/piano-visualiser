@@ -27,8 +27,8 @@ class PianoVisualiser:
         self.NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         self.NOTES_IN_OCTAVE = len(self.NOTES)
 
-        self.TIME_SCALE = 1
-        self.TIME_STEP = 0.005 # -> This requires a lot of tweaking unfortunately, need to figure our another method or make it dynamic.
+        self.TIME_SCALE = 0.9
+        self.TIME_STEP = 0.001 # -> This requires tweaking (SOMETIMES) unfortunately
 
         self.white_key_width = self.screen_width / self.TOTAL_WHITE_KEYS
         self.white_key_height = (self.screen_height / 7) + 500
@@ -80,7 +80,7 @@ class PianoVisualiser:
 
         shape : Shape = self.get_shape_by_key(key_note)
         if not shape:
-            error(f'Failed to get the shape for {note_object.pitch}')
+            error(f'Failed to get the shape for the pitch: {note_object.pitch} ({key_note})')
             return
         
         shape.colour = self.KEY_DOWN_COLOUR
@@ -167,7 +167,7 @@ class PianoVisualiser:
 
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-        piece = 'C:/Users/Martin/Documents/MIDI Files/rachmaninov_concerto_2_1_(c)galimberti (1).mid'
+        piece = 'C:/Users/Martin/Documents/MIDI Files/Sonate_No._14_Moonlight_3rd_Movement.mid'
 
         midParser = MidiParser()
         result = midParser.deserialize_midi(piece)
@@ -176,7 +176,9 @@ class PianoVisualiser:
         self.play_midi(midParser, result)
         output('Finished playing the midi file!')
 
-
 class PianoAnimations(PianoVisualiser):
     def note_fall(self) -> None:
+        pass
+
+    def note_release(self) -> None:
         pass

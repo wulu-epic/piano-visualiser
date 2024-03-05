@@ -24,7 +24,7 @@ class ObjectManager:
      
     def populate(self, amount : int, custom_func = None):
         if custom_func != None:
-            self.objects = custom_func()
+            self.objects += custom_func()
             return
            
         # This is just like a hello world.

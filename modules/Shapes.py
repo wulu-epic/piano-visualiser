@@ -2,6 +2,7 @@ import pygame
 import random
 from pygame.math import Vector2
 
+# I better not see ur ass using this for drawing / instancing shapes.
 class Shape:
     def __init__(self, position : pygame.Vector2, size, colour):
         self.position : pygame.Vector2 = pygame.Vector2(position)

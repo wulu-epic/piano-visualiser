@@ -4,13 +4,12 @@ environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 from modules import Renderer
 from modules import ObjectController
 from modules.Piano import PianoVisualiser
-from modules.Midi import MidiParser
 
 from modules.Shapes import *
 from modules.Output import *
 
 def main():
-    render_Manager = Renderer.Scene("Piano Testing")
+    render_Manager = Renderer.Scene("Piano Visualiser V1")
     piano_Visualiser = PianoVisualiser()
 
     objManager = ObjectController.ObjectManager()
