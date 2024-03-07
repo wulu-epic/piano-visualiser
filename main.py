@@ -10,9 +10,9 @@ from modules.Output import *
 
 def main():
     render_Manager = Renderer.Scene("Piano Visualiser V1")
-    piano_Visualiser = PianoVisualiser()
-
     objManager = ObjectController.ObjectManager()
+    piano_Visualiser = PianoVisualiser(objManager, render_Manager)
+
     objManager.populate(0, piano_Visualiser.draw_keys)
 
     warn(f"Successfully populated the scene with {len(objManager.objects)}")

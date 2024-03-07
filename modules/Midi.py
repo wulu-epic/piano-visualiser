@@ -52,15 +52,25 @@ class MidiParser:
         instrument_index : int = 0
         
         for instrument in f_midi_file.instruments:
-            for note in instrument.notes:
+            for note in instrument.notes:                
                 n_note = N_Note(note.start, note.end, note.pitch, note.velocity, instrument_index) 
                 if n_note.start not in self.result:
                     self.result[n_note.start] = []    
                 self.result[n_note.start].append(n_note)
             
-            instrument_index += 1
+            # Pedal implmentation, will work on it later cause i fucked it this time TODO: basically make a new dict of pedal, and will just make a seperate player and thread for the pedal alone. {0.0: PEDAL_OBJECT, 1.2341: PEDAL_OBJECT} [time : pedal_object]
+            #for control_change in instrument.control_changes:
+            #    if type(control_change) is pretty_midi.ControlChange and control_change.number == 64:
+            #        control_change = N_Note(control_change.time, control_change.time, control_change.number, control_change.value, instrument_index, control_change.value == 127) 
+            #        if control_change.start not in self.result:
+            #            self.result[control_change.start] = []    
+            #        self.result[control_change.start].append(control_change)
+            #instrument_index += 1
 
         warn('Found ' + str(instrument_index) + ' instruments!')
+        if instrument_index <= 1:
+            warn('There is <= 1 instrument, so there may be some playback issues.')
+
         return self.result
     
 class MIDIListener:
@@ -107,6 +117,8 @@ class MidiSynthesiser:
     def __init__(self) -> None:
         self.midi_out = rtmidi.MidiOut()
         self.port_open : bool = False
+
+        self.pedal : bool = False
 
     def get_all_ports(self):
         return self.midi_out.get_ports()

@@ -8,12 +8,14 @@ from collections import defaultdict
 from modules.Shapes import *
 from modules.PianoObjects import *
 from modules.Output import*
+from modules.ObjectController import ObjectManager
 
 from modules.Midi import MidiParser
 from modules.Midi import MidiSynthesiser
 
+
 class PianoVisualiser:
-    def __init__(self):
+    def __init__(self, objManager : ObjectManager, renderManager ):
         self.screen_width = 1280
         self.screen_height = 720
 
@@ -27,8 +29,9 @@ class PianoVisualiser:
         self.NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         self.NOTES_IN_OCTAVE = len(self.NOTES)
 
-        self.TIME_SCALE = 0.9
-        self.TIME_STEP = 0.001 # -> This requires tweaking (SOMETIMES) unfortunately
+        self.time = 0.0
+        self.TIME_SCALE = 1
+        self.TIME_STEP = 0.01 # -> This requires tweaking (SOMETIMES) unfortunately
 
         self.white_key_width = self.screen_width / self.TOTAL_WHITE_KEYS
         self.white_key_height = (self.screen_height / 7) + 500
@@ -37,7 +40,11 @@ class PianoVisualiser:
         self.notes_and_shapes = {}
 
         self.midi_synthesier = MidiSynthesiser()
+        self.object_manager : ObjectManager = objManager
+        self.render_manager  = renderManager
+
         self.visualisation_running = False
+        self.note_fall = True
 
         pygame.init()
         self.clock = pygame.time.Clock()
@@ -76,24 +83,24 @@ class PianoVisualiser:
     
     def press_note(self, note_object : N_Note, midParser : MidiParser):
         self.midi_synthesier.play_note(note_object.pitch, note_object.velocity)
-        key_note = midParser.midi_note_number_to_name(note_object.pitch)
 
+        key_note = midParser.midi_note_number_to_name(note_object.pitch)
         shape : Shape = self.get_shape_by_key(key_note)
         if not shape:
             error(f'Failed to get the shape for the pitch: {note_object.pitch} ({key_note})')
             return
         
-        shape.colour = self.KEY_DOWN_COLOUR
+        shape.colour = self.KEY_DOWN_COLOUR 
 
     def lift_note(self, note_object : N_Note, midParser : MidiParser) -> None:
-        key_note = midParser.midi_note_number_to_name(note_object.pitch)
         self.midi_synthesier.stop_note(note_object.pitch, note_object.velocity)
 
+        key_note = midParser.midi_note_number_to_name(note_object.pitch)    
         shape : Shape = self.get_shape_by_key(key_note)
         if not shape:
             error(f'Failed to get the shape for {note_object.pitch}')
             return
-        
+    
         shape.colour = shape.original_colour
 
     def split_note_array_by_instruments(self, note_array: list[N_Note]) -> dict: # Creates a dictionary of notes sorted by instruments / tracks
@@ -105,6 +112,18 @@ class PianoVisualiser:
             result[note.instrument_index].append(note)
 
         return result
+    
+    def get_pedal_note_amount(self, note_array):
+        n = 0
+        for note in note_array:
+            if note.pedal:
+                n += 1
+        return n
+    
+    def get_pedal_note(self, note_array):
+        for index, note in enumerate(note_array):
+            if note.pedal:
+                return index, note
     
     def press_note_array(self, note_array : list, end_duration : float, start_duration : float, midParser : MidiParser) -> None:
         for note in note_array:
@@ -124,9 +143,52 @@ class PianoVisualiser:
             note_array_by_instruments : dict = self.split_note_array_by_instruments(note_array)
             for instrument_index, note_arrays in note_array_by_instruments.items():
                 Thread(target=self.press_note_array, args=(note_arrays, end_duration, start_duration, midParser, ), daemon=True).start()
+                if self.note_fall:
+                    Thread(target=self.fall_note_array, args=(note_arrays, midParser, ), daemon=True).start()
         else:
             Thread(target=self.press_note_array, args=(note_array, end_duration, start_duration, midParser, ), daemon=True).start()
+            if self.note_fall:
+                Thread(target=self.fall_note_array, args=(note_array, midParser, ), daemon=True).start()
     
+    # object animations, will make into a own class later on (🙏🙏)
+    def object_up_animate(self, object: Shape, duration: float):
+        initial_y_position = 600
+        CONST_SPEED = 5
+
+        object = Square(object.position + Vector2(0, initial_y_position), object.size, (255,0,255))
+
+        final_position = Vector2(object.position.x, 600) 
+        distance_to_fall = final_position.y - object.position.y
+        speed = (distance_to_fall / duration) / CONST_SPEED
+
+        elapsed_time = 0
+        time_step = 0.001
+        object.size = (object.size[0], 20)
+        
+        object = self.render_manager.insert_object(object)
+        while elapsed_time <= (duration * CONST_SPEED):
+            elapsed_time += time_step
+            time.sleep(time_step)
+
+            delta_y = speed * elapsed_time  
+
+            new_y = initial_y_position + delta_y
+            new_position = Vector2(object.position.x, new_y)
+            object.position = new_position
+
+        self.render_manager.remove_object(object)
+
+    def fall_note_array(self, note_array, midParser):
+        for note in note_array:
+            note_duration = note.end - note.start
+
+            note_keyname = midParser.midi_note_number_to_name(note.pitch)
+            if note_keyname:
+                note_shape = self.get_shape_by_key(note_keyname)
+                if note_shape:
+                    Thread(target = self.object_up_animate, args=(note_shape, note_duration,), daemon=True).start()
+                    #self.object_up_animate(note_shape, note_duration)
+
     def play_midi(self, midParser: MidiParser, mid_parser_result: dict):
         if not self.midi_synthesier.open_port():
             error('Failed to open a port! Audio will not work!')
@@ -147,6 +209,8 @@ class PianoVisualiser:
         start_time = time.time()
 
         for i in numpy.arange(0, midi_length, self.TIME_STEP):
+            self.time = i
+
             notes_to_play = []
             for timestamp in list(notes_by_timestamp.keys()):
                 if (timestamp - i) < self.TIME_STEP:
@@ -167,7 +231,7 @@ class PianoVisualiser:
 
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-        piece = 'C:/Users/Martin/Documents/MIDI Files/Sonate_No._14_Moonlight_3rd_Movement.mid'
+        piece = 'C:/Users/Martin/Documents/MIDI Files/Winter Wind Op. 25 No. 11.mid'
 
         midParser = MidiParser()
         result = midParser.deserialize_midi(piece)
@@ -175,10 +239,3 @@ class PianoVisualiser:
         output(f'Now playing the selected file: {piece}')
         self.play_midi(midParser, result)
         output('Finished playing the midi file!')
-
-class PianoAnimations(PianoVisualiser):
-    def note_fall(self) -> None:
-        pass
-
-    def note_release(self) -> None:
-        pass

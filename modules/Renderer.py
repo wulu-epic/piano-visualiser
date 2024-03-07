@@ -24,6 +24,10 @@ class Scene:
 
     def insert_object(self, object : pygame.Rect):
         self.scene_objects.append(object)
+        return self.scene_objects[self.scene_objects.index(object)] # returns a direct reference to the object within the render queue
+    
+    def remove_object(self, object):
+        self.scene_objects.remove(object)
 
     def clean(self):
         for thread in self.threads:
@@ -32,6 +36,9 @@ class Scene:
                 t.join()
                 
         pygame.quit()
+
+    def order_draw_order_by_z_index(self):
+        pass # Shape class will contain Z-index value, before starting to draw, we sort it by the z index, low to high (lower values get drawn first)
 
     def fill_scene(self, objects):
         for obj in objects:
@@ -45,16 +52,17 @@ class Scene:
             for item in custom_functions:
                 if len(item) == 2:
                     #Custom arguement functionality TODO will have to setup a more modular system for this later.
-                    
                     void, arg = item
                     if arg is not None and type(arg) is Piano.PianoVisualiser and not arg.visualisation_running:
                         thread = threading.Thread(target=void, args=(arg,), daemon=True)
                         thread.start()
+
                         self.threads.append(thread)
                 else:
                     void = item[0]
                     thread = threading.Thread(target=void, daemon=True)
                     thread.start()
+                    
                     self.threads.append(thread)
                         
             for object in self.scene_objects:
