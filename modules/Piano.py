@@ -28,10 +28,12 @@ class PianoVisualiser:
 
         self.NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         self.NOTES_IN_OCTAVE = len(self.NOTES)
+        self.NOTE_SCALE = 100
+
+        self.TIME_SCALE = .999
+        self.TIME_STEP = 0.001 # -> This requires tweaking (SOMETIMES) unfortunately
 
         self.time = 0.0
-        self.TIME_SCALE = 1
-        self.TIME_STEP = 0.01 # -> This requires tweaking (SOMETIMES) unfortunately
 
         self.white_key_width = self.screen_width / self.TOTAL_WHITE_KEYS
         self.white_key_height = (self.screen_height / 7) + 500
@@ -153,26 +155,23 @@ class PianoVisualiser:
     # object animations, will make into a own class later on (🙏🙏)
     def object_up_animate(self, object: Shape, duration: float):
         initial_y_position = 600
-        CONST_SPEED = 5
+        CONST_SPEED = 200
 
         object = Square(object.position + Vector2(0, initial_y_position), object.size, (255,0,255))
-
-        final_position = Vector2(object.position.x, 600) 
-        distance_to_fall = final_position.y - object.position.y
-        speed = (distance_to_fall / duration) / CONST_SPEED
+        speed = -(CONST_SPEED)
 
         elapsed_time = 0
-        time_step = 0.001
-        object.size = (object.size[0], 20)
+        time_step = 0.01
+        object.size = (object.size[0], duration * self.NOTE_SCALE)
         
         object = self.render_manager.insert_object(object)
-        while elapsed_time <= (duration * CONST_SPEED):
+        while elapsed_time <= (duration * 20):
             elapsed_time += time_step
             time.sleep(time_step)
 
             delta_y = speed * elapsed_time  
-
             new_y = initial_y_position + delta_y
+
             new_position = Vector2(object.position.x, new_y)
             object.position = new_position
 
@@ -187,7 +186,6 @@ class PianoVisualiser:
                 note_shape = self.get_shape_by_key(note_keyname)
                 if note_shape:
                     Thread(target = self.object_up_animate, args=(note_shape, note_duration,), daemon=True).start()
-                    #self.object_up_animate(note_shape, note_duration)
 
     def play_midi(self, midParser: MidiParser, mid_parser_result: dict):
         if not self.midi_synthesier.open_port():
@@ -231,7 +229,8 @@ class PianoVisualiser:
 
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
-        piece = 'C:/Users/Martin/Documents/MIDI Files/Winter Wind Op. 25 No. 11.mid'
+        piece = 'C:/Users/Martin/Documents/MIDI Files/Liszt_Grandes_tudes_de_Paganini_in_A_Minor_Theme_and_Variations_S._141_No._6.mid'
+        self.render_manager.scene_objects.append(ImageRect(((1280/2) - 500, 720/2), "C:/Users/Martin/Pictures/Screenshots/Screenshot 2024-03-06 161319.png"))      
 
         midParser = MidiParser()
         result = midParser.deserialize_midi(piece)

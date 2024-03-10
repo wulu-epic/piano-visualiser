@@ -24,7 +24,7 @@ class MidiParser:
             key_name = f"{note}{octave}"
         else:
             key_name = f"{note}{octave}"
-        return key_name
+        return key_name.replace("-1", "")
     
     def get_midi_length(self, result: dict) -> int: 
         if not result:
@@ -124,8 +124,9 @@ class MidiSynthesiser:
         return self.midi_out.get_ports()
 
     def open_port(self, port = 0) -> bool:
-        self.midi_out.open_port(port)
-        return self.midi_out.is_port_open() 
+        if not self.port_open:
+            self.port_open = self.midi_out.open_port(port)
+        return self.port_open
     
     def play_note(self, note, velocity) -> None:
         self.midi_out.send_message([NOTE_ON, note, velocity])

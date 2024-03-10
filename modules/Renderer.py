@@ -14,6 +14,7 @@ class Scene:
         self.scene_objects = [] 
         self.scene_name = scene_name
         self.running = True
+        
 
         self.threads = []
 
@@ -44,7 +45,7 @@ class Scene:
         for obj in objects:
             self.insert_object(obj)
 
-    def run(self, custom_functions):        
+    def run(self, custom_functions):  
         while self.running:
             self.handle_events()
             self.screen.fill((30,30,30))
@@ -68,8 +69,8 @@ class Scene:
             for object in self.scene_objects:
                 object.draw(self.screen)
 
-            pygame.display.set_caption(f"{self.scene_name} FPS: {math.ceil(self.clock.get_fps())}") 
+            pygame.display.set_caption(f"{self.scene_name} FPS: {math.ceil(self.clock.get_fps())} OBJECTS: {len(self.scene_objects)}") 
             pygame.display.flip()
-            self.clock.tick(0)
+            self.clock.tick(360)
 
         self.clean()

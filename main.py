@@ -9,7 +9,7 @@ from modules.Shapes import *
 from modules.Output import *
 
 def main():
-    render_Manager = Renderer.Scene("Piano Visualiser V1")
+    render_Manager = Renderer.Scene("Piano Visualiser")
     objManager = ObjectController.ObjectManager()
     piano_Visualiser = PianoVisualiser(objManager, render_Manager)
 
