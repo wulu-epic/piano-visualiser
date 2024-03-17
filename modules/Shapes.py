@@ -13,6 +13,7 @@ class Shape:
 
         self.colour = colour
         self.original_colour = self.colour
+        
         self.ID = random.randint(0, 256*128)
         self.border_radius = 2
 

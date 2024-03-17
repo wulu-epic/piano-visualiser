@@ -17,6 +17,7 @@ class MidiParser:
     def midi_note_number_to_name(self, note_number) -> str:
         notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         octave = (note_number // 12) - 2
+
         note_index = note_number % 12
         note = notes[note_index]
 
@@ -24,6 +25,7 @@ class MidiParser:
             key_name = f"{note}{octave}"
         else:
             key_name = f"{note}{octave}"
+
         return key_name.replace("-1", "")
     
     def get_midi_length(self, result: dict) -> int: 
@@ -48,7 +50,8 @@ class MidiParser:
         
         self.result = {}
 
-        f_midi_file = PrettyMIDI(midi_file)
+        f_midi_file : PrettyMIDI = PrettyMIDI(midi_file)
+        print(f_midi_file.key_signature_changes)
         instrument_index : int = 0
         
         for instrument in f_midi_file.instruments:
@@ -65,7 +68,8 @@ class MidiParser:
             #        if control_change.start not in self.result:
             #            self.result[control_change.start] = []    
             #        self.result[control_change.start].append(control_change)
-            #instrument_index += 1
+                
+            instrument_index += 1
 
         warn('Found ' + str(instrument_index) + ' instruments!')
         if instrument_index <= 1:
@@ -126,6 +130,7 @@ class MidiSynthesiser:
     def open_port(self, port = 0) -> bool:
         if not self.port_open:
             self.port_open = self.midi_out.open_port(port)
+        
         return self.port_open
     
     def play_note(self, note, velocity) -> None:

@@ -7,12 +7,11 @@ from collections import defaultdict
 
 from modules.Shapes import *
 from modules.PianoObjects import *
-from modules.Output import*
+from modules.Output import *
 from modules.ObjectController import ObjectManager
 
 from modules.Midi import MidiParser
 from modules.Midi import MidiSynthesiser
-
 
 class PianoVisualiser:
     def __init__(self, objManager : ObjectManager, renderManager ):
@@ -47,6 +46,7 @@ class PianoVisualiser:
 
         self.visualisation_running = False
         self.note_fall = True
+        self.playing_piece = False
 
         pygame.init()
         self.clock = pygame.time.Clock()
@@ -145,10 +145,12 @@ class PianoVisualiser:
             note_array_by_instruments : dict = self.split_note_array_by_instruments(note_array)
             for instrument_index, note_arrays in note_array_by_instruments.items():
                 Thread(target=self.press_note_array, args=(note_arrays, end_duration, start_duration, midParser, ), daemon=True).start()
+                
                 if self.note_fall:
                     Thread(target=self.fall_note_array, args=(note_arrays, midParser, ), daemon=True).start()
         else:
             Thread(target=self.press_note_array, args=(note_array, end_duration, start_duration, midParser, ), daemon=True).start()
+            
             if self.note_fall:
                 Thread(target=self.fall_note_array, args=(note_array, midParser, ), daemon=True).start()
     
@@ -165,7 +167,8 @@ class PianoVisualiser:
         object.size = (object.size[0], duration * self.NOTE_SCALE)
         
         object = self.render_manager.insert_object(object)
-        while elapsed_time <= (duration * 20):
+        duration_scaler = duration < 1.5 and 20 or 2
+        while elapsed_time <= (duration * duration_scaler):
             elapsed_time += time_step
             time.sleep(time_step)
 
@@ -185,9 +188,13 @@ class PianoVisualiser:
             if note_keyname:
                 note_shape = self.get_shape_by_key(note_keyname)
                 if note_shape:
-                    Thread(target = self.object_up_animate, args=(note_shape, note_duration,), daemon=True).start()
+                    Thread(target = self.object_up_animate, args=(note_shape, note_duration, ), daemon=True).start()
 
-    def play_midi(self, midParser: MidiParser, mid_parser_result: dict):
+    def stop_midi(self) -> None:
+        if self.playing_piece:
+            self.playing_piece = False
+
+    def play_midi(self, midParser: MidiParser, mid_parser_result: dict) -> None:
         if not self.midi_synthesier.open_port():
             error('Failed to open a port! Audio will not work!')
             return
@@ -205,6 +212,7 @@ class PianoVisualiser:
                 notes_by_timestamp[timestamp].append(note)
 
         start_time = time.time()
+        self.playing_piece = True
 
         for i in numpy.arange(0, midi_length, self.TIME_STEP):
             self.time = i
@@ -220,21 +228,26 @@ class PianoVisualiser:
 
             elapsed_time = time.time() - start_time
             beat_time = (i * self.TIME_SCALE)
-            time_to_wait = beat_time - elapsed_time
 
+            time_to_wait = beat_time - elapsed_time
             if time_to_wait > 0:
                 pygame.time.wait(int(time_to_wait * 1000))  
 
+            if not self.playing_piece:
+                break
+
             self.clock.tick()
+        
+        self.playing_piece = False
 
     def play_midi_thread(self, pianoVisualiser):
         pianoVisualiser.visualisation_running = True
         piece = 'C:/Users/Martin/Documents/MIDI Files/Liszt_Grandes_tudes_de_Paganini_in_A_Minor_Theme_and_Variations_S._141_No._6.mid'
-        self.render_manager.scene_objects.append(ImageRect(((1280/2) - 500, 720/2), "C:/Users/Martin/Pictures/Screenshots/Screenshot 2024-03-06 161319.png"))      
+        #self.render_manager.scene_objects.append(ImageRect(((1280/2) - 500, 720/2), "C:/Users/Martin/Pictures/Screenshots/Screenshot 2024-03-06 161319.png"))      
 
         midParser = MidiParser()
         result = midParser.deserialize_midi(piece)
-
         output(f'Now playing the selected file: {piece}')
+
         self.play_midi(midParser, result)
         output('Finished playing the midi file!')

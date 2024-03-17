@@ -14,7 +14,6 @@ class Scene:
         self.scene_objects = [] 
         self.scene_name = scene_name
         self.running = True
-        
 
         self.threads = []
 
@@ -52,7 +51,7 @@ class Scene:
 
             for item in custom_functions:
                 if len(item) == 2:
-                    #Custom arguement functionality TODO will have to setup a more modular system for this later.
+                    # Custom arguement functionality TODO will have to setup a more modular system for this later.
                     void, arg = item
                     if arg is not None and type(arg) is Piano.PianoVisualiser and not arg.visualisation_running:
                         thread = threading.Thread(target=void, args=(arg,), daemon=True)
@@ -69,8 +68,8 @@ class Scene:
             for object in self.scene_objects:
                 object.draw(self.screen)
 
-            pygame.display.set_caption(f"{self.scene_name} FPS: {math.ceil(self.clock.get_fps())} OBJECTS: {len(self.scene_objects)}") 
+            pygame.display.set_caption(f"{self.scene_name} | FPS: {math.ceil(self.clock.get_fps())} | OBJECTS: {len(self.scene_objects)}") 
             pygame.display.flip()
-            self.clock.tick(360)
+            self.clock.tick(0)
 
         self.clean()

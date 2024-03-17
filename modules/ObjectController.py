@@ -16,11 +16,12 @@ class ObjectManager:
         return False
     
     def objects_to_rect(self, surface):
-        e = []
+        rects = []
         for object in self.objects:
             shape, radius, colour = object.draw(surface)
-            e.append([shape, radius, colour])
-        return e
+            rects.append([shape, radius, colour])
+
+        return rects
      
     def populate(self, amount : int, custom_func = None):
         if custom_func != None:
